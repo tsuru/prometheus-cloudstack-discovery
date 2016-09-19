@@ -15,18 +15,25 @@ func main() {
 		apiKey    = flag.String("api-key", "", "cloudstack api key")
 		secretKey = flag.String("secret-key", "", "cloudstack secret key")
 	)
+	flag.Parse()
 	endpoint, err := url.Parse(*address)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error parsing url:", err)
 	}
 	client, err := cloudstack.NewClient(endpoint, *apiKey, *secretKey, "", "")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error creating client: ", err)
 	}
-	params := cloudstack.NewListVirtualMachinesParameter()
-	machines, err := client.ListVirtualMachines(params)
+	projectsParams := cloudstack.NewListProjectsParameter()
+	projects, err := client.ListProjects(projectsParams)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error list projects: ", err)
 	}
-	fmt.Println(machines)
+	fmt.Println("projects: ", projects)
+	machinesParams := cloudstack.NewListVirtualMachinesParameter()
+	machines, err := client.ListVirtualMachines(machinesParams)
+	if err != nil {
+		log.Fatal("Error list machines: ", err)
+	}
+	fmt.Println("machines: ", machines)
 }
