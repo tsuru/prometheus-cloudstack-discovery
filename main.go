@@ -76,11 +76,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		tg := TargetGroup{
-			Targets: machines,
-			Labels:  map[string]string{"job": "cadvisor"},
-		}
-		targetGroups := []TargetGroup{tg}
+		targetGroups := machinesToTg(machines)
 		b, err := json.Marshal(targetGroups)
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
@@ -95,6 +91,14 @@ func main() {
 		}
 		time.Sleep(*sleep)
 	}
+}
+
+func machinesToTg(machines []string) []TargetGroup {
+	tg := TargetGroup{
+		Targets: machines,
+		Labels:  map[string]string{"job": "cadvisor"},
+	}
+	return []TargetGroup{tg}
 }
 
 func atomicWriteFile(filename string, data []byte, tmpSuffix string) error {
