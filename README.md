@@ -1,6 +1,8 @@
 Prometheus CloudStack Service Discovery
 =======================================
 
+[![Build Status](https://travis-ci.org/tsuru/prometheus-cloudstack-discovery.png?branch=master)](https://travis-ci.org/tsuru/prometheus-cloudstack-discovery)
+
 `prometheus-cloudstack-discovery` generates target groups by querying the
 CloudSTack API. This is to be used in conjunction with Prometheus's
 [custom service discovery][1] feature.
