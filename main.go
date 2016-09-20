@@ -63,6 +63,7 @@ func main() {
 		apiKey    = flag.String("api-key", "", "cloudstack api key")
 		secretKey = flag.String("secret-key", "", "cloudstack secret key")
 		sleep     = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
+		dest      = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -84,12 +85,11 @@ func main() {
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
 		}
-		os.Stdout.Write(b)
-		// if dest == "-" {
-		// 	_, err = os.Stdout.Write(b)
-		// } else {
-		// 	err = atomicWriteFile(dest, b, ".new")
-		// }
+		if *dest == "" {
+			_, err = os.Stdout.Write(b)
+		} else {
+			err = atomicWriteFile(*dest, b, ".new")
+		}
 		if err != nil {
 			log.Fatal(err)
 		}
