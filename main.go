@@ -48,19 +48,22 @@ type Project struct {
 }
 
 func listMachineByProject(c *client, projectID string, mc chan []string) {
+	var machines []string
+	defer func() { mc <- machines }()
 	params := map[string]string{
 		"projectid": projectID,
 		"simple":    "true",
 	}
 	var m ListVirtualMachinesResponse
-	c.do("listVirtualMachines", params, &m)
-	var machines []string
+	err := c.do("listVirtualMachines", params, &m)
+	if err != nil {
+		return
+	}
 	for _, vm := range m.ListVirtualMachinesResponse.VirtualMachine {
 		for _, n := range vm.Nic {
 			machines = append(machines, n.IpAddress)
 		}
 	}
-	mc <- machines
 }
 
 func listMachines(c *client) ([]string, error) {
@@ -95,7 +98,6 @@ func main() {
 		secretKey: url.QueryEscape(*secretKey),
 		url:       *address,
 	}
-	fmt.Println(c)
 	machines, err := listMachines(c)
 	if err != nil {
 		log.Fatal("Error list machines: ", err)
