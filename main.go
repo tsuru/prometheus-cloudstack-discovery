@@ -1,61 +1,24 @@
 package main
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/base64"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"net/url"
-	"sort"
-	"strings"
 
-	"github.com/tsuru/tsuru/net"
+	"github.com/tsuru/prometheus-cloudstack-discovery/cloudstack"
 )
 
-type client struct {
-	apiKey    string
-	secretKey string
-	url       string
-}
-
-type ListVirtualMachinesResponse struct {
-	ListVirtualMachinesResponse struct {
-		VirtualMachine []VirtualMachine `json:"virtualmachine"`
-	} `json:"listvirtualmachinesresponse"`
-}
-
-type VirtualMachine struct {
-	Nic []NicStruct `json:"nic"`
-}
-
-type NicStruct struct {
-	IpAddress string `json:"ipaddress"`
-}
-
-type ListProjectsResponse struct {
-	ListProjectsResponse struct {
-		Project []Project `json:"project"`
-	} `json:"listprojectsresponse"`
-}
-
-type Project struct {
-	Id string
-}
-
-func listMachineByProject(c *client, projectID string, mc chan []string) {
+func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []string) {
 	var machines []string
 	defer func() { mc <- machines }()
 	params := map[string]string{
 		"projectid": projectID,
 		"simple":    "true",
 	}
-	var m ListVirtualMachinesResponse
-	err := c.do("listVirtualMachines", params, &m)
+	var m cloudstack.ListVirtualMachinesResponse
+	err := c.Do("listVirtualMachines", params, &m)
 	if err != nil {
 		return
 	}
@@ -66,10 +29,10 @@ func listMachineByProject(c *client, projectID string, mc chan []string) {
 	}
 }
 
-func listMachines(c *client) ([]string, error) {
+func listMachines(c *cloudstack.Client) ([]string, error) {
 	params := map[string]string{"simple": "true"}
-	var projects ListProjectsResponse
-	err := c.do("listProjects", params, &projects)
+	var projects cloudstack.ListProjectsResponse
+	err := c.Do("listProjects", params, &projects)
 	if err != nil {
 		return nil, err
 	}
@@ -93,62 +56,14 @@ func main() {
 		secretKey = flag.String("secret-key", "", "cloudstack secret key")
 	)
 	flag.Parse()
-	c := &client{
-		apiKey:    url.QueryEscape(*apiKey),
-		secretKey: url.QueryEscape(*secretKey),
-		url:       *address,
+	c := &cloudstack.Client{
+		ApiKey:    url.QueryEscape(*apiKey),
+		SecretKey: url.QueryEscape(*secretKey),
+		URL:       *address,
 	}
 	machines, err := listMachines(c)
 	if err != nil {
 		log.Fatal("Error list machines: ", err)
 	}
 	fmt.Println("machines: ", machines)
-}
-
-func (c *client) buildUrl(command string, params map[string]string) (string, error) {
-	params["command"] = command
-	params["response"] = "json"
-	params["apiKey"] = c.apiKey
-	var sortedKeys []string
-	for k := range params {
-		sortedKeys = append(sortedKeys, k)
-	}
-	sort.Strings(sortedKeys)
-	var stringParams []string
-	for _, key := range sortedKeys {
-		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(params[key]))
-		stringParams = append(stringParams, queryStringParam)
-	}
-	queryString := strings.Join(stringParams, "&")
-	digest := hmac.New(sha1.New, []byte(c.secretKey))
-	digest.Write([]byte(strings.ToLower(queryString)))
-	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-	return fmt.Sprintf("%s?%s&signature=%s", c.url, queryString, url.QueryEscape(signature)), nil
-}
-
-func (c *client) do(cmd string, params map[string]string, result interface{}) error {
-	u, err := c.buildUrl(cmd, params)
-	if err != nil {
-		return err
-	}
-	client := net.Dial5Full300ClientNoKeepAlive
-	resp, err := client.Get(u)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Unexpected response code for %s command %d: %s", cmd, resp.StatusCode, string(body))
-	}
-	if result != nil {
-		err = json.Unmarshal(body, result)
-		if err != nil {
-			return fmt.Errorf("Unexpected result data for %s command: %s - Body: %s", cmd, err.Error(), string(body))
-		}
-	}
-	return nil
 }
