@@ -20,10 +20,17 @@ func main() {
 	if err != nil {
 		log.Fatal("Error parsing url:", err)
 	}
-	client, err := cloudstack.NewClient(endpoint, *apiKey, *secretKey, "", "")
+	client, err := cloudstack.NewClient(
+		endpoint,
+		url.QueryEscape(*apiKey),
+		url.QueryEscape(*secretKey),
+		"",
+		"",
+	)
 	if err != nil {
 		log.Fatal("Error creating client: ", err)
 	}
+	fmt.Println("client: ", client)
 	projectsParams := cloudstack.NewListProjectsParameter()
 	projects, err := client.ListProjects(projectsParams)
 	if err != nil {
