@@ -40,10 +40,15 @@ func main() {
 	}
 	fmt.Println("projects: ", projects)
 	var machines []*cloudstack.VirtualMachine
-	machinesParams := cloudstack.NewListVirtualMachinesParameter()
-	machines, err = client.ListVirtualMachines(machinesParams)
-	if err != nil {
-		log.Fatal("Error list machines: ", err)
+	for _, p := range projects {
+		machinesParams := cloudstack.NewListVirtualMachinesParameter()
+		machinesParams.ProjectId = p.Id
+		m, err := client.ListVirtualMachines(machinesParams)
+		if err != nil {
+			fmt.Printf("Error list machines for project %s: %s\n", p.Id, err)
+		} else {
+			machines = append(machines, m...)
+		}
 	}
 	fmt.Println("machines: ", machines)
 }
