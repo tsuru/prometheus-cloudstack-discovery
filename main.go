@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/url"
+	"time"
 
 	"github.com/tsuru/prometheus-cloudstack-discovery/cloudstack"
 )
@@ -54,6 +55,7 @@ func main() {
 		address   = flag.String("url", "", "cloudstack api url address")
 		apiKey    = flag.String("api-key", "", "cloudstack api key")
 		secretKey = flag.String("secret-key", "", "cloudstack secret key")
+		sleep     = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -61,9 +63,12 @@ func main() {
 		SecretKey: url.QueryEscape(*secretKey),
 		URL:       *address,
 	}
-	machines, err := listMachines(c)
-	if err != nil {
-		log.Fatal("Error list machines: ", err)
+	for {
+		machines, err := listMachines(c)
+		if err != nil {
+			log.Fatal("Error list machines: ", err)
+		}
+		fmt.Println("machines: ", machines)
+		time.Sleep(*sleep)
 	}
-	fmt.Println("machines: ", machines)
 }
