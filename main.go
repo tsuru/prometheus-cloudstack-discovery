@@ -47,6 +47,22 @@ type Project struct {
 	Id string
 }
 
+func listMachineByProject(c *client, projectID string, mc chan []string) {
+	params := map[string]string{
+		"projectid": projectID,
+		"simple":    "true",
+	}
+	var m ListVirtualMachinesResponse
+	c.do("listVirtualMachines", params, &m)
+	var machines []string
+	for _, vm := range m.ListVirtualMachinesResponse.VirtualMachine {
+		for _, n := range vm.Nic {
+			machines = append(machines, n.IpAddress)
+		}
+	}
+	mc <- machines
+}
+
 func listMachines(c *client) ([]string, error) {
 	params := map[string]string{"simple": "true"}
 	var projects ListProjectsResponse
@@ -54,23 +70,15 @@ func listMachines(c *client) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var machines []string
+	mc := make(chan []string)
 	for _, p := range projects.ListProjectsResponse.Project {
-		params := map[string]string{
-			"projectid": p.Id,
-			"simple":    "true",
-		}
-		var m ListVirtualMachinesResponse
-		err = c.do("listVirtualMachines", params, &m)
-		if err != nil {
-			return nil, err
-		}
-		for _, vm := range m.ListVirtualMachinesResponse.VirtualMachine {
-			for _, n := range vm.Nic {
-				machines = append(machines, n.IpAddress)
-			}
-		}
+		go listMachineByProject(c, p.Id, mc)
 	}
+	var machines []string
+	for range projects.ListProjectsResponse.Project {
+		machines = append(machines, <-mc...)
+	}
+	close(mc)
 	return machines, err
 }
 
