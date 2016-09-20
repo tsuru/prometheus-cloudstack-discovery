@@ -1,15 +1,22 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/tsuru/prometheus-cloudstack-discovery/cloudstack"
 )
+
+// TargetGroup is a collection of related hosts that prometheus monitors
+type TargetGroup struct {
+	Targets []string          `json:"targets"`
+	Labels  map[string]string `json:"labels"`
+}
 
 func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []string) {
 	var machines []string
@@ -68,7 +75,36 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		fmt.Println("machines: ", machines)
+		tg := TargetGroup{
+			Targets: machines,
+			Labels:  map[string]string{"job": "cadvisor"},
+		}
+		targetGroups := []TargetGroup{tg}
+		b, err := json.Marshal(targetGroups)
+		if err != nil {
+			log.Fatal("Error marshal json: ", err)
+		}
+		os.Stdout.Write(b)
+		// if dest == "-" {
+		// 	_, err = os.Stdout.Write(b)
+		// } else {
+		// 	err = atomicWriteFile(dest, b, ".new")
+		// }
+		if err != nil {
+			log.Fatal(err)
+		}
 		time.Sleep(*sleep)
 	}
+}
+
+func atomicWriteFile(filename string, data []byte, tmpSuffix string) error {
+	err := ioutil.WriteFile(filename+tmpSuffix, data, 0644)
+	if err != nil {
+		return err
+	}
+	err = os.Rename(filename+tmpSuffix, filename)
+	if err != nil {
+		return err
+	}
+	return nil
 }
