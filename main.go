@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/url"
@@ -64,6 +65,7 @@ func main() {
 		secretKey = flag.String("secret-key", "", "cloudstack secret key")
 		sleep     = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
 		dest      = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
+		port      = flag.Int("port", 80, "Port that is exposing /metrics")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -76,7 +78,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		targetGroups := machinesToTg(machines)
+		targetGroups := machinesToTg(machines, *port)
 		b, err := json.Marshal(targetGroups)
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
@@ -93,7 +95,10 @@ func main() {
 	}
 }
 
-func machinesToTg(machines []string) []TargetGroup {
+func machinesToTg(machines []string, port int) []TargetGroup {
+	for i := range machines {
+		machines[i] = fmt.Sprintf("%s:%d", machines, port)
+	}
 	tg := TargetGroup{
 		Targets: machines,
 		Labels:  map[string]string{"job": "cadvisor"},
