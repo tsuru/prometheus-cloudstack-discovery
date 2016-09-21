@@ -28,7 +28,6 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []stri
 		"simple":    "true",
 	}
 	var m cloudstack.ListVirtualMachinesResponse
-	fmt.Println("start: ", projectID)
 	err := c.Do("listVirtualMachines", params, &m)
 	if err != nil {
 		return
@@ -38,7 +37,6 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []stri
 			machines = append(machines, n.IpAddress)
 		}
 	}
-	fmt.Println("end: ", projectID)
 }
 
 func in(v string, list []string) bool {
@@ -108,7 +106,6 @@ func main() {
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
 		}
-		fmt.Println("bla", *dest, *dest == "")
 		if *dest == "" {
 			fmt.Println(string(b))
 		} else {
@@ -123,7 +120,7 @@ func main() {
 
 func machinesToTg(machines []string, port int) []TargetGroup {
 	for i := range machines {
-		machines[i] = fmt.Sprintf("%s:%d", machines, port)
+		machines[i] = fmt.Sprintf("%s:%d", machines[i], port)
 	}
 	tg := TargetGroup{
 		Targets: machines,
