@@ -89,6 +89,7 @@ func main() {
 		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
 		port           = flag.Int("port", 80, "Port that is exposing /metrics")
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored")
+		projectId      = flag.String("project-id", "", "Filter by project-id")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
