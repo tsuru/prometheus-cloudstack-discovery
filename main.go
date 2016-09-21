@@ -58,15 +58,20 @@ func filterProjects(projects []cloudstack.Project, ignore []string) []cloudstack
 	return filteredProjects
 }
 
-func listMachines(c *cloudstack.Client, projectsToIgnore []string) ([]string, error) {
+func listMachines(c *cloudstack.Client, projectID string, projectsToIgnore []string) ([]string, error) {
 	params := map[string]string{"simple": "true"}
 	var response cloudstack.ListProjectsResponse
 	err := c.Do("listProjects", params, &response)
 	if err != nil {
 		return nil, err
 	}
-	projects := response.ListProjectsResponse.Project
-	projects = filterProjects(projects, projectsToIgnore)
+	projects := []cloudstack.Project{}
+	if projectID != "" {
+		projects = []cloudstack.Project{{Id: projectID}}
+	} else {
+		projects = response.ListProjectsResponse.Project
+		projects = filterProjects(projects, projectsToIgnore)
+	}
 	mc := make(chan []string)
 	for _, p := range projects {
 		go listMachineByProject(c, p.Id, mc)
@@ -89,7 +94,7 @@ func main() {
 		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
 		port           = flag.Int("port", 80, "Port that is exposing /metrics")
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored")
-		projectId      = flag.String("project-id", "", "Filter by project-id")
+		projectID      = flag.String("project-id", "", "Filter by project-id")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -98,7 +103,7 @@ func main() {
 		URL:       *address,
 	}
 	for {
-		machines, err := listMachines(c, strings.Split(*ignoreProjects, ","))
+		machines, err := listMachines(c, *projectID, strings.Split(*ignoreProjects, ","))
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
