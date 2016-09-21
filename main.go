@@ -93,8 +93,8 @@ func main() {
 		sleep          = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
 		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
 		port           = flag.Int("port", 80, "Port that is exposing /metrics")
-		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored")
-		projectID      = flag.String("project-id", "", "Filter by project-id")
+		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
+		projectID      = flag.String("projects", "", "Filter by a list of project-id separared by comma")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
