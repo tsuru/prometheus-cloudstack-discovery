@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/tsuru/prometheus-cloudstack-discovery/cloudstack"
@@ -27,6 +28,7 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []stri
 		"simple":    "true",
 	}
 	var m cloudstack.ListVirtualMachinesResponse
+	fmt.Println("start: ", projectID)
 	err := c.Do("listVirtualMachines", params, &m)
 	if err != nil {
 		return
@@ -36,21 +38,43 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []stri
 			machines = append(machines, n.IpAddress)
 		}
 	}
+	fmt.Println("end: ", projectID)
 }
 
-func listMachines(c *cloudstack.Client) ([]string, error) {
+func in(v string, list []string) bool {
+	for _, i := range list {
+		if v == i {
+			return true
+		}
+	}
+	return false
+}
+
+func filterProjects(projects []cloudstack.Project, ignore []string) []cloudstack.Project {
+	var filteredProjects []cloudstack.Project
+	for _, p := range projects {
+		if !in(p.Id, ignore) {
+			filteredProjects = append(filteredProjects, p)
+		}
+	}
+	return filteredProjects
+}
+
+func listMachines(c *cloudstack.Client, projectsToIgnore []string) ([]string, error) {
 	params := map[string]string{"simple": "true"}
-	var projects cloudstack.ListProjectsResponse
-	err := c.Do("listProjects", params, &projects)
+	var response cloudstack.ListProjectsResponse
+	err := c.Do("listProjects", params, &response)
 	if err != nil {
 		return nil, err
 	}
+	projects := response.ListProjectsResponse.Project
+	projects = filterProjects(projects, projectsToIgnore)
 	mc := make(chan []string)
-	for _, p := range projects.ListProjectsResponse.Project {
+	for _, p := range projects {
 		go listMachineByProject(c, p.Id, mc)
 	}
 	var machines []string
-	for range projects.ListProjectsResponse.Project {
+	for range projects {
 		machines = append(machines, <-mc...)
 	}
 	close(mc)
@@ -60,12 +84,13 @@ func listMachines(c *cloudstack.Client) ([]string, error) {
 func main() {
 	log.SetOutput(ioutil.Discard)
 	var (
-		address   = flag.String("url", "", "cloudstack api url address")
-		apiKey    = flag.String("api-key", "", "cloudstack api key")
-		secretKey = flag.String("secret-key", "", "cloudstack secret key")
-		sleep     = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
-		dest      = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
-		port      = flag.Int("port", 80, "Port that is exposing /metrics")
+		address        = flag.String("url", "", "cloudstack api url address")
+		apiKey         = flag.String("api-key", "", "cloudstack api key")
+		secretKey      = flag.String("secret-key", "", "cloudstack secret key")
+		sleep          = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
+		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
+		port           = flag.Int("port", 80, "Port that is exposing /metrics")
+		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -74,7 +99,7 @@ func main() {
 		URL:       *address,
 	}
 	for {
-		machines, err := listMachines(c)
+		machines, err := listMachines(c, strings.Split(*ignoreProjects, ","))
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
@@ -83,8 +108,9 @@ func main() {
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
 		}
+		fmt.Println("bla", *dest, *dest == "")
 		if *dest == "" {
-			_, err = os.Stdout.Write(b)
+			fmt.Println(string(b))
 		} else {
 			err = atomicWriteFile(*dest, b, ".new")
 		}
