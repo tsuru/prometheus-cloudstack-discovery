@@ -6,8 +6,14 @@ go:
   - tip
 script:
   - go test ./...
+env:
+  global:
+    - GOARCH=amd64
+    - GO_FOR_RELEASE=1.7.1
 services:
   - docker
+after_success:
+  - travis/send_to_docker_hub.sh
 matrix:
   allow_failures:
     - go: tip
