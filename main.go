@@ -114,6 +114,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		if *sleep == 0 {
+			break
+		}
 		time.Sleep(*sleep)
 	}
 }
