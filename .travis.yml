@@ -1,11 +1,13 @@
 language: go
-sudo: false
+sudo: required
 install: true
 go:
   - 1.7.1
   - tip
 script:
   - go test ./...
+services:
+  - docker
 matrix:
   allow_failures:
     - go: tip
