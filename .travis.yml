@@ -13,7 +13,7 @@ env:
 services:
   - docker
 after_success:
-  - travis/send_to_docker_hub.sh
+  - send_to_docker_hub.sh
 matrix:
   allow_failures:
     - go: tip
