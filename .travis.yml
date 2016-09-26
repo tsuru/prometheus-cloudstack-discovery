@@ -6,7 +6,7 @@ go:
   - tip
 script:
   - go test ./...
-  - CGO_ENABLED=0 go build
+  - go build -ldflags "-linkmode external -extldflags -static"
 env:
   global:
     - GOARCH=amd64
