@@ -3,17 +3,37 @@ package cloudstack
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
-
-	"github.com/tsuru/tsuru/net"
+	"time"
 )
+
+var dial5Full300ClientNoKeepAlive, _ = makeTimeoutHTTPClient(5*time.Second, 5*time.Minute, -1)
+
+func makeTimeoutHTTPClient(dialTimeout time.Duration, fullTimeout time.Duration, maxIdle int) (*http.Client, *net.Dialer) {
+	dialer := &net.Dialer{
+		Timeout:   dialTimeout,
+		KeepAlive: 30 * time.Second,
+	}
+	client := &http.Client{
+		Transport: &http.Transport{
+			Dial:                dialer.Dial,
+			TLSHandshakeTimeout: dialTimeout,
+			MaxIdleConnsPerHost: maxIdle,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		},
+		Timeout: fullTimeout,
+	}
+	return client, dialer
+}
 
 type Client struct {
 	ApiKey    string
@@ -47,7 +67,7 @@ func (c *Client) Do(cmd string, params map[string]string, result interface{}) er
 	if err != nil {
 		return err
 	}
-	client := net.Dial5Full300ClientNoKeepAlive
+	client := dial5Full300ClientNoKeepAlive
 	resp, err := client.Get(u)
 	if err != nil {
 		return err
