@@ -66,7 +66,7 @@ func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []
 		return nil, err
 	}
 	projects := []cloudstack.Project{}
-	if projectIDs != nil {
+	if len(projectIDs) > 0 {
 		for _, id := range projectIDs {
 			projects = append(projects, cloudstack.Project{Id: id})
 		}
@@ -87,7 +87,6 @@ func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []
 }
 
 func main() {
-	log.SetOutput(ioutil.Discard)
 	var (
 		address        = flag.String("url", "", "cloudstack api url address")
 		apiKey         = flag.String("api-key", "", "cloudstack api key")
@@ -104,9 +103,16 @@ func main() {
 		SecretKey: url.QueryEscape(*secretKey),
 		URL:       *address,
 	}
+	p := []string{}
+	if *projects != "" {
+		p = strings.Split(*projects, ",")
+	}
+	ip := []string{}
+	if *ignoreProjects != "" {
+		ip = strings.Split(*ignoreProjects, ",")
+	}
 	for {
-		machines, err := listMachines(
-			c, strings.Split(*projects, ","), strings.Split(*ignoreProjects, ","))
+		machines, err := listMachines(c, p, ip)
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
