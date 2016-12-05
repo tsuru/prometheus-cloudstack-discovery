@@ -20,8 +20,8 @@ type TargetGroup struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []string) {
-	var machines []string
+func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []cloudstack.VirtualMachine) {
+	var machines []cloudstack.VirtualMachine
 	defer func() { mc <- machines }()
 	params := map[string]string{
 		"projectid": projectID,
@@ -33,9 +33,7 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []stri
 		return
 	}
 	for _, vm := range m.ListVirtualMachinesResponse.VirtualMachine {
-		for _, n := range vm.Nic {
-			machines = append(machines, n.IpAddress)
-		}
+		machines = append(machines, vm)
 	}
 }
 
@@ -58,7 +56,7 @@ func filterProjects(projects []cloudstack.Project, ignore []string) []cloudstack
 	return filteredProjects
 }
 
-func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []string) ([]string, error) {
+func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []string) ([]cloudstack.VirtualMachine, error) {
 	params := map[string]string{"simple": "true"}
 	var response cloudstack.ListProjectsResponse
 	err := c.Do("listProjects", params, &response)
@@ -74,11 +72,11 @@ func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []
 		projects = response.ListProjectsResponse.Project
 		projects = filterProjects(projects, projectsToIgnore)
 	}
-	mc := make(chan []string)
+	mc := make(chan []cloudstack.VirtualMachine)
 	for _, p := range projects {
 		go listMachineByProject(c, p.Id, mc)
 	}
-	var machines []string
+	var machines []cloudstack.VirtualMachine
 	for range projects {
 		machines = append(machines, <-mc...)
 	}
@@ -137,15 +135,19 @@ func main() {
 	}
 }
 
-func machinesToTg(machines []string, port int, job string) []TargetGroup {
-	for i := range machines {
-		machines[i] = fmt.Sprintf("%s:%d", machines[i], port)
+func machinesToTg(machines []cloudstack.VirtualMachine, port int, job string) []TargetGroup {
+	var targetGroups []TargetGroup
+	for _, m := range machines {
+		var targets []string
+		for _, n := range m.Nic {
+			targets = append(targets, fmt.Sprintf("%s:%d", n.IpAddress, port))
+		}
+		targetGroups = append(targetGroups, TargetGroup{
+			Targets: targets,
+			Labels:  map[string]string{"job": job, "project": m.Project, "displayname": m.Displayname},
+		})
 	}
-	tg := TargetGroup{
-		Targets: machines,
-		Labels:  map[string]string{"job": job},
-	}
-	return []TargetGroup{tg}
+	return targetGroups
 }
 
 func atomicWriteFile(filename string, data []byte, tmpSuffix string) error {

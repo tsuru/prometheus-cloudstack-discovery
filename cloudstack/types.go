@@ -7,7 +7,9 @@ type ListVirtualMachinesResponse struct {
 }
 
 type VirtualMachine struct {
-	Nic []NicStruct `json:"nic"`
+	Nic         []NicStruct `json:"nic"`
+	Displayname string      `json:"displayname"`
+	Project     string      `json:"project"`
 }
 
 type NicStruct struct {

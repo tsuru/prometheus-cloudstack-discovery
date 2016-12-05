@@ -8,13 +8,23 @@ import (
 )
 
 func TestMachinesToTg(t *testing.T) {
-	machines := []string{"127.0.0.1", "localhost"}
+	machines := []cloudstack.VirtualMachine{{
+		Project:     "project_name",
+		Displayname: "display_name",
+		Nic:         []cloudstack.NicStruct{{IpAddress: "127.0.0.1"}},
+	}, {
+		Project:     "project_name2",
+		Displayname: "display_name2",
+		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
+	}}
 	tgs := machinesToTg(machines, 9090, "cadvisor")
-	tg := TargetGroup{
-		Targets: machines,
-		Labels:  map[string]string{"job": "cadvisor"},
-	}
-	expected := []TargetGroup{tg}
+	expected := []TargetGroup{{
+		Targets: []string{"127.0.0.1:9090"},
+		Labels:  map[string]string{"job": "cadvisor", "project": "project_name", "displayname": "display_name"},
+	}, {
+		Targets: []string{"localhost:9090"},
+		Labels:  map[string]string{"job": "cadvisor", "project": "project_name2", "displayname": "display_name2"},
+	}}
 	if !reflect.DeepEqual(tgs, expected) {
 		t.Errorf("machinesToTg(%q) == %q, want %q", machines, tgs, expected)
 	}
