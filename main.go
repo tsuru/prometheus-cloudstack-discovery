@@ -96,6 +96,7 @@ func main() {
 		port           = flag.Int("port", 80, "Port that is exposing /metrics")
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
+		job            = flag.String("job", "cadvisor", "Prometheus job name to label targets")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -116,7 +117,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		targetGroups := machinesToTg(machines, *port)
+		targetGroups := machinesToTg(machines, *port, *job)
 		b, err := json.Marshal(targetGroups)
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
@@ -136,13 +137,13 @@ func main() {
 	}
 }
 
-func machinesToTg(machines []string, port int) []TargetGroup {
+func machinesToTg(machines []string, port int, job string) []TargetGroup {
 	for i := range machines {
 		machines[i] = fmt.Sprintf("%s:%d", machines[i], port)
 	}
 	tg := TargetGroup{
 		Targets: machines,
-		Labels:  map[string]string{"job": "cadvisor"},
+		Labels:  map[string]string{"job": job},
 	}
 	return []TargetGroup{tg}
 }

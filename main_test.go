@@ -9,7 +9,7 @@ import (
 
 func TestMachinesToTg(t *testing.T) {
 	machines := []string{"127.0.0.1", "localhost"}
-	tgs := machinesToTg(machines, 9090)
+	tgs := machinesToTg(machines, 9090, "cadvisor")
 	tg := TargetGroup{
 		Targets: machines,
 		Labels:  map[string]string{"job": "cadvisor"},
