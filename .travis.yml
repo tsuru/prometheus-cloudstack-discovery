@@ -2,7 +2,7 @@ language: go
 sudo: required
 install: true
 go:
-  - 1.7.1
+  - 1.7.3
   - tip
 script:
   - go test ./...
@@ -10,11 +10,12 @@ script:
 env:
   global:
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.7.1
+    - GO_FOR_RELEASE=1.7.3
+    - IMAGE_NAME=tsuru/prometheus-cloudstack-discovery
 services:
   - docker
 after_success:
-  - ./send_to_docker_hub.sh
+  - curl https://raw.githubusercontent.com/tsuru/push-to-docker/master/push.sh | bash
 matrix:
   allow_failures:
     - go: tip
