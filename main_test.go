@@ -16,14 +16,28 @@ func TestMachinesToTg(t *testing.T) {
 		Project:     "project_name2",
 		Displayname: "display_name2",
 		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
+	}, {
+		Project:     "project_name3",
+		Displayname: "display_name3",
+		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
+		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095,tsuru/8080"}},
 	}}
-	tgs := machinesToTg(machines, 9090, "cadvisor")
+	tgs := machinesToTg(machines, 9090, "cadvisor", "PROMETHEUS_ENDPOINTS")
 	expected := []TargetGroup{{
 		Targets: []string{"127.0.0.1:9090"},
 		Labels:  map[string]string{"job": "cadvisor", "project": "project_name", "displayname": "display_name"},
 	}, {
 		Targets: []string{"localhost:9090"},
 		Labels:  map[string]string{"job": "cadvisor", "project": "project_name2", "displayname": "display_name2"},
+	}, {
+		Targets: []string{"localhost:9095"},
+		Labels:  map[string]string{"job": "node-exporter", "project": "project_name3", "displayname": "display_name3"},
+	}, {
+		Targets: []string{"localhost:8080"},
+		Labels:  map[string]string{"job": "tsuru", "project": "project_name3", "displayname": "display_name3"},
+	}, {
+		Targets: []string{"localhost:9090"},
+		Labels:  map[string]string{"job": "cadvisor", "project": "project_name3", "displayname": "display_name3"},
 	}}
 	if !reflect.DeepEqual(tgs, expected) {
 		t.Errorf("machinesToTg(%q) == %q, want %q", machines, tgs, expected)

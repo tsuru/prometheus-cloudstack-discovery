@@ -95,6 +95,7 @@ func main() {
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
 		job            = flag.String("job", "cadvisor", "Prometheus job name to label targets")
+		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g, `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -115,7 +116,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		targetGroups := machinesToTg(machines, *port, *job)
+		targetGroups := machinesToTg(machines, *port, *job, *tagName)
 		b, err := json.Marshal(targetGroups)
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
@@ -135,19 +136,55 @@ func main() {
 	}
 }
 
-func machinesToTg(machines []cloudstack.VirtualMachine, port int, job string) []TargetGroup {
+func machinesToTg(machines []cloudstack.VirtualMachine, port int, job string, tagName string) []TargetGroup {
 	var targetGroups []TargetGroup
 	for _, m := range machines {
-		var targets []string
-		for _, n := range m.Nic {
-			targets = append(targets, fmt.Sprintf("%s:%d", n.IpAddress, port))
+		targetGroups = append(targetGroups, targetsFromTag(m, tagName)...)
+		if job != "" && port != 0 {
+			var targets []string
+			for _, n := range m.Nic {
+				targets = append(targets, fmt.Sprintf("%s:%d", n.IpAddress, port))
+			}
+			targetGroups = append(targetGroups, TargetGroup{
+				Targets: targets,
+				Labels:  map[string]string{"job": job, "project": m.Project, "displayname": m.Displayname},
+			})
 		}
-		targetGroups = append(targetGroups, TargetGroup{
-			Targets: targets,
-			Labels:  map[string]string{"job": job, "project": m.Project, "displayname": m.Displayname},
-		})
 	}
 	return targetGroups
+}
+
+func targetsFromTag(m cloudstack.VirtualMachine, tagName string) []TargetGroup {
+	if tagName == "" {
+		return nil
+	}
+	var targetGroups []TargetGroup
+	for _, t := range m.Tags {
+		if tagName != t.Key {
+			continue
+		}
+		tagValues := strings.Split(t.Value, ",")
+		for _, v := range tagValues {
+			tagJob, tagPort := splitJobPort(v)
+			var targets []string
+			for _, n := range m.Nic {
+				targets = append(targets, fmt.Sprintf("%s:%s", n.IpAddress, tagPort))
+			}
+			targetGroups = append(targetGroups, TargetGroup{
+				Targets: targets,
+				Labels:  map[string]string{"job": tagJob, "project": m.Project, "displayname": m.Displayname},
+			})
+		}
+	}
+	return targetGroups
+}
+
+func splitJobPort(s string) (string, string) {
+	parts := strings.SplitN(s, "/", 2)
+	if len(parts) != 2 {
+		return "", ""
+	}
+	return parts[0], parts[1]
 }
 
 func atomicWriteFile(filename string, data []byte, tmpSuffix string) error {
