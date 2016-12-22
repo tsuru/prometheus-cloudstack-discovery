@@ -95,7 +95,7 @@ func main() {
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
 		job            = flag.String("job", "cadvisor", "Prometheus job name to label targets")
-		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g, `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
+		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g. `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
