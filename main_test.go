@@ -22,7 +22,7 @@ func TestMachinesToTg(t *testing.T) {
 		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
 		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095,tsuru/8080"}},
 	}}
-	tgs := machinesToTg(machines, 9090, "cadvisor", "PROMETHEUS_ENDPOINTS")
+	tgs := machinesToTg(machines, []string{"cadvisor/9090"}, "PROMETHEUS_ENDPOINTS")
 	expected := []TargetGroup{{
 		Targets: []string{"127.0.0.1:9090"},
 		Labels:  map[string]string{"job": "cadvisor", "project": "project_name", "displayname": "display_name"},

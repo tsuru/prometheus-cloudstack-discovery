@@ -91,10 +91,9 @@ func main() {
 		secretKey      = flag.String("secret-key", "", "cloudstack secret key")
 		sleep          = flag.Duration("sleep", 0, "Amount of time between regenerating the target_group.json")
 		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
-		port           = flag.Int("port", 80, "Port that is exposing /metrics")
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
-		job            = flag.String("job", "cadvisor", "Prometheus job name to label targets")
+		jobs           = flag.String("jobs", "cadvisor/9094", "Comma separated list of <job-name>/<port> that is exposing metrics")
 		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g. `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
 	)
 	flag.Parse()
@@ -116,7 +115,7 @@ func main() {
 		if err != nil {
 			log.Fatal("Error list machines: ", err)
 		}
-		targetGroups := machinesToTg(machines, *port, *job, *tagName)
+		targetGroups := machinesToTg(machines, strings.Split(*jobs, ","), *tagName)
 		b, err := json.Marshal(targetGroups)
 		if err != nil {
 			log.Fatal("Error marshal json: ", err)
@@ -136,14 +135,15 @@ func main() {
 	}
 }
 
-func machinesToTg(machines []cloudstack.VirtualMachine, port int, job string, tagName string) []TargetGroup {
+func machinesToTg(machines []cloudstack.VirtualMachine, jobs []string, tagName string) []TargetGroup {
 	var targetGroups []TargetGroup
 	for _, m := range machines {
 		targetGroups = append(targetGroups, targetsFromTag(m, tagName)...)
-		if job != "" && port != 0 {
+		for _, j := range jobs {
+			job, port := splitJobPort(j)
 			var targets []string
 			for _, n := range m.Nic {
-				targets = append(targets, fmt.Sprintf("%s:%d", n.IpAddress, port))
+				targets = append(targets, fmt.Sprintf("%s:%s", n.IpAddress, port))
 			}
 			targetGroups = append(targetGroups, TargetGroup{
 				Targets: targets,
