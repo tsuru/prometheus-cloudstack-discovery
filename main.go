@@ -57,18 +57,18 @@ func filterProjects(projects []cloudstack.Project, ignore []string) []cloudstack
 }
 
 func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []string) ([]cloudstack.VirtualMachine, error) {
-	params := map[string]string{"simple": "true"}
-	var response cloudstack.ListProjectsResponse
-	err := c.Do("listProjects", params, &response)
-	if err != nil {
-		return nil, err
-	}
 	projects := []cloudstack.Project{}
 	if len(projectIDs) > 0 {
 		for _, id := range projectIDs {
 			projects = append(projects, cloudstack.Project{Id: id})
 		}
 	} else {
+		params := map[string]string{"simple": "true"}
+		var response cloudstack.ListProjectsResponse
+		err := c.Do("listProjects", params, &response)
+		if err != nil {
+			return nil, err
+		}
 		projects = response.ListProjectsResponse.Project
 		projects = filterProjects(projects, projectsToIgnore)
 	}
@@ -81,7 +81,7 @@ func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []
 		machines = append(machines, <-mc...)
 	}
 	close(mc)
-	return machines, err
+	return machines, nil
 }
 
 func main() {
