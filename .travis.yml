@@ -2,7 +2,7 @@ language: go
 sudo: required
 install: true
 go:
-  - 1.7.3
+  - 1.10.3
   - tip
 script:
   - go test ./...
@@ -10,7 +10,7 @@ script:
 env:
   global:
     - GOARCH=amd64
-    - GO_FOR_RELEASE=1.7.3
+    - GO_FOR_RELEASE=1.10.3
     - IMAGE_NAME=tsuru/prometheus-cloudstack-discovery
 services:
   - docker
