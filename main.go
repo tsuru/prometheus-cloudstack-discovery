@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"strings"
@@ -111,28 +110,35 @@ func main() {
 		ip = strings.Split(*ignoreProjects, ",")
 	}
 	for {
-		machines, err := listMachines(c, p, ip)
-		if err != nil {
-			log.Fatal("Error list machines: ", err)
-		}
-		targetGroups := machinesToTg(machines, strings.Split(*jobs, ","), *tagName)
-		b, err := json.Marshal(targetGroups)
-		if err != nil {
-			log.Fatal("Error marshal json: ", err)
-		}
-		if *dest == "" {
-			fmt.Println(string(b))
-		} else {
-			err = atomicWriteFile(*dest, b, ".new")
-		}
-		if err != nil {
-			log.Fatal(err)
+		if err := run(c, p, ip, jobs, tagName, dest); err != nil {
+			fmt.Fprintf(os.Stderr, "%v", err)
 		}
 		if *sleep == 0 {
 			break
 		}
 		time.Sleep(*sleep)
 	}
+}
+
+func run(c *cloudstack.Client, p []string, ip []string, jobs, tagName, dest *string) error {
+	machines, err := listMachines(c, p, ip)
+	if err != nil {
+		return fmt.Errorf("error listing machines: %v", err)
+	}
+	targetGroups := machinesToTg(machines, strings.Split(*jobs, ","), *tagName)
+	b, err := json.Marshal(targetGroups)
+	if err != nil {
+		return fmt.Errorf("error marshaling json: %v", err)
+	}
+	if *dest == "" {
+		fmt.Println(string(b))
+	} else {
+		err = atomicWriteFile(*dest, b, ".new")
+	}
+	if err != nil {
+		return fmt.Errorf("error writing: %v", err)
+	}
+	return nil
 }
 
 func machinesToTg(machines []cloudstack.VirtualMachine, jobs []string, tagName string) []TargetGroup {
