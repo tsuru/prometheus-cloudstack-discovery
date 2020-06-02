@@ -92,7 +92,7 @@ func main() {
 		dest           = flag.String("dest", "", "File to write the target group JSON. (e.g. `tgroups/target_groups.json`)")
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
-		jobs           = flag.String("jobs", "cadvisor/9094", "Comma separated list of <job-name>/<port> that is exposing metrics")
+		jobs           = flag.String("jobs", "", "Comma separated list of <job-name>/<port> that is exposing metrics")
 		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g. `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
 	)
 	flag.Parse()
@@ -146,6 +146,9 @@ func machinesToTg(machines []cloudstack.VirtualMachine, jobs []string, tagName s
 	for _, m := range machines {
 		targetGroups = append(targetGroups, targetsFromTag(m, tagName)...)
 		for _, j := range jobs {
+			if j == "" {
+				continue
+			}
 			job, port := splitJobPort(j)
 			var targets []string
 			for _, n := range m.Nic {
