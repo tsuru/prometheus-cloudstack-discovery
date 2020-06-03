@@ -20,7 +20,7 @@ func TestMachinesToTg(t *testing.T) {
 		Project:     "project_name3",
 		Displayname: "display_name3",
 		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
-		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095,tsuru/8080"}},
+		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095;tsuru/8080"}},
 	}}
 	tgs := machinesToTg(machines, []string{"cadvisor/9090"}, "PROMETHEUS_ENDPOINTS")
 	expected := []TargetGroup{{
@@ -57,7 +57,7 @@ func TestMachinesToTgEmptyJob(t *testing.T) {
 		Project:     "project_name3",
 		Displayname: "display_name3",
 		Nic:         []cloudstack.NicStruct{{IpAddress: "localhost"}},
-		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095,tsuru/8080"}},
+		Tags:        []cloudstack.Tag{{Key: "abc", Value: "1"}, {Key: "PROMETHEUS_ENDPOINTS", Value: "node-exporter/9095;tsuru/8080"}},
 	}}
 	tgs := machinesToTg(machines, []string{""}, "PROMETHEUS_ENDPOINTS")
 	expected := []TargetGroup{{

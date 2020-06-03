@@ -93,7 +93,7 @@ func main() {
 		ignoreProjects = flag.String("ignore-projects", "", "List of project ids to be ignored separated by comma")
 		projects       = flag.String("projects", "", "Filter by a list of project-id separared by comma")
 		jobs           = flag.String("jobs", "", "Comma separated list of <job-name>/<port> that is exposing metrics")
-		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g. `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094,node-exporter/9095)")
+		tagName        = flag.String("tag", "", "Cloudstack VM Tag with job/port list. (e.g. `PROMETHEUS_ENDPOINTS` where PROMETHEUS_ENDPOINTS=cadvisor/9094;node-exporter/9095)")
 	)
 	flag.Parse()
 	c := &cloudstack.Client{
@@ -172,7 +172,7 @@ func targetsFromTag(m cloudstack.VirtualMachine, tagName string) []TargetGroup {
 		if tagName != t.Key {
 			continue
 		}
-		tagValues := strings.Split(t.Value, ",")
+		tagValues := strings.Split(t.Value, ";")
 		for _, v := range tagValues {
 			tagJob, tagPort := splitJobPort(v)
 			var targets []string
