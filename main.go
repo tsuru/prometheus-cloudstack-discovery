@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/tsuru/prometheus-cloudstack-discovery/cloudstack"
@@ -19,9 +20,12 @@ type TargetGroup struct {
 	Labels  map[string]string `json:"labels"`
 }
 
-func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []cloudstack.VirtualMachine) {
+func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []cloudstack.VirtualMachine, errc chan error, wg *sync.WaitGroup) {
 	var machines []cloudstack.VirtualMachine
-	defer func() { mc <- machines }()
+	defer func() {
+		mc <- machines
+		wg.Done()
+	}()
 	params := map[string]string{
 		"projectid": projectID,
 		"simple":    "true",
@@ -29,6 +33,7 @@ func listMachineByProject(c *cloudstack.Client, projectID string, mc chan []clou
 	var m cloudstack.ListVirtualMachinesResponse
 	err := c.Do("listVirtualMachines", params, &m)
 	if err != nil {
+		errc <- err
 		return
 	}
 	for _, vm := range m.ListVirtualMachinesResponse.VirtualMachine {
@@ -71,9 +76,17 @@ func listMachines(c *cloudstack.Client, projectIDs []string, projectsToIgnore []
 		projects = response.ListProjectsResponse.Project
 		projects = filterProjects(projects, projectsToIgnore)
 	}
-	mc := make(chan []cloudstack.VirtualMachine)
+	mc := make(chan []cloudstack.VirtualMachine, 100)
+	errc := make(chan error, 100)
+	wg := sync.WaitGroup{}
 	for _, p := range projects {
-		go listMachineByProject(c, p.Id, mc)
+		wg.Add(1)
+		go listMachineByProject(c, p.Id, mc, errc, &wg)
+	}
+	wg.Wait()
+	close(errc)
+	for err := range errc {
+		return nil, err
 	}
 	var machines []cloudstack.VirtualMachine
 	for range projects {
@@ -111,7 +124,7 @@ func main() {
 	}
 	for {
 		if err := run(c, p, ip, jobs, tagName, dest); err != nil {
-			fmt.Fprintf(os.Stderr, "%v", err)
+			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
 		if *sleep == 0 {
 			break
